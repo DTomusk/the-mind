@@ -2,7 +2,9 @@ package players
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
+	"time"
 )
 
 type Player struct {
@@ -26,6 +28,7 @@ func CreatePlayers(numPlayers int, hands [][]int, playChan chan int, cardsPlayed
 }
 
 func (p *Player) Play(wg *sync.WaitGroup, done <-chan struct{}) {
+	r := rand.New(rand.NewSource(time.Now().UnixNano() + int64(p.Id)))
 	defer wg.Done()
 	for len(p.Hand) > 0 {
 		select {
@@ -34,6 +37,7 @@ func (p *Player) Play(wg *sync.WaitGroup, done <-chan struct{}) {
 			return
 		default:
 		}
+		time.Sleep(time.Duration(r.Intn(1000)) * time.Millisecond)
 		card := p.Hand[0]
 		p.Hand = p.Hand[1:]
 		fmt.Printf("Player %d is playing card %d\n", p.Id, card)

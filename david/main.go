@@ -14,31 +14,6 @@ type GameConfig struct {
 	CardsPerPlayer int
 }
 
-func parseArgs() (*GameConfig, error) {
-	// TODO: consider using flags
-	args := os.Args[1:]
-	if len(args) != 2 {
-		return nil, fmt.Errorf("usage: go run main.go <numPlayers> <cardsPerPlayer>")
-
-	}
-	numPlayers, err := strconv.Atoi(args[0])
-	if err != nil {
-		return nil, fmt.Errorf("error: numPlayers must be an integer")
-	}
-	cardsPerPlayer, err := strconv.Atoi(args[1])
-	if err != nil {
-		return nil, fmt.Errorf("error: cardsPerPlayer must be an integer")
-	}
-
-	if numPlayers*cardsPerPlayer > 100 {
-		return nil, fmt.Errorf("error: Not enough cards in the deck for the given number of players and cards per player")
-	}
-	return &GameConfig{
-		NumPlayers:     numPlayers,
-		CardsPerPlayer: cardsPerPlayer,
-	}, nil
-}
-
 func main() {
 	config, err := parseArgs()
 	if err != nil {
@@ -70,8 +45,6 @@ func main() {
 			fmt.Printf("Main received card %d from Player %d\n", card, player.Id)
 
 			// Send an empty struct to notify the player that a card has been played
-			// TODO: we want to notify the players of what cards have been played so far
-			// TODO: end the game if this card is less than the previous card
 			if len(cardsPlayed) > 0 {
 				last := cardsPlayed[len(cardsPlayed)-1]
 				if card < last {
@@ -100,6 +73,31 @@ func main() {
 	default:
 		fmt.Println("Game over — all cards played successfully.")
 	}
+}
+
+func parseArgs() (*GameConfig, error) {
+	// TODO: consider using flags
+	args := os.Args[1:]
+	if len(args) != 2 {
+		return nil, fmt.Errorf("usage: go run main.go <numPlayers> <cardsPerPlayer>")
+
+	}
+	numPlayers, err := strconv.Atoi(args[0])
+	if err != nil {
+		return nil, fmt.Errorf("error: numPlayers must be an integer")
+	}
+	cardsPerPlayer, err := strconv.Atoi(args[1])
+	if err != nil {
+		return nil, fmt.Errorf("error: cardsPerPlayer must be an integer")
+	}
+
+	if numPlayers*cardsPerPlayer > 100 {
+		return nil, fmt.Errorf("error: Not enough cards in the deck for the given number of players and cards per player")
+	}
+	return &GameConfig{
+		NumPlayers:     numPlayers,
+		CardsPerPlayer: cardsPerPlayer,
+	}, nil
 }
 
 func setUpGame(config *GameConfig, playChan chan int, cardsPlayedChan chan []int) []*players.Player {

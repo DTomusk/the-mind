@@ -1,11 +1,17 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
 
 func main() {
 	fmt.Println("Hello, David!")
 	deck := createDeck()
 	fmt.Println("Deck of cards:", deck)
+	shuffleDeck(deck)
+	fmt.Println("Shuffled deck of cards:", deck)
 }
 
 // initialize a new deck of cards numbered 1 to 100
@@ -15,5 +21,15 @@ func createDeck() []int {
 	for i := 0; i < 100; i++ {
 		deck[i] = i + 1
 	}
+	return deck
+}
+
+func shuffleDeck(deck []int) []int {
+	// Placeholder for shuffle logic
+	fmt.Println("Shuffling the deck...")
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	r.Shuffle(len(deck), func(i, j int) {
+		deck[i], deck[j] = deck[j], deck[i]
+	})
 	return deck
 }

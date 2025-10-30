@@ -21,18 +21,19 @@ func main() {
 		return
 	}
 
-	playChan := make(chan int)
+	playChan := make(chan players.Move)
 	cardsPlayedChan := make(chan []int)
 	done := make(chan struct{})
 	var wg sync.WaitGroup
 
 	players := setUpGame(config, playChan, cardsPlayedChan)
-	player := players[0]
 
-	// Start the player's play routine in the background
-	fmt.Printf("Player %d is starting to play...\n", player.Id)
-	wg.Add(1)
-	go player.Play(&wg, done)
+	// Start each player's play routine in the background
+	for _, player := range players {
+		fmt.Printf("Player %d is starting to play...\n", player.Id)
+		wg.Add(1)
+		go player.Play(&wg, done)
+	}
 
 	// Run a goroutine in the background to listen for played cards
 	// Gets cards from playChan and notifies the player to continue
@@ -41,22 +42,23 @@ func main() {
 	gameWg.Add(1)
 	go func() {
 		defer gameWg.Done()
-		for card := range playChan {
-			fmt.Printf("Main received card %d from Player %d\n", card, player.Id)
+		for move := range playChan {
+			fmt.Printf("Main received card %d from Player %d\n", move.Card, move.PlayerId)
 
 			// Send an empty struct to notify the player that a card has been played
 			if len(cardsPlayed) > 0 {
 				last := cardsPlayed[len(cardsPlayed)-1]
-				if card < last {
-					fmt.Printf("Card %d played after %d! Game over.\n", card, last)
-					player.CardsPlayedChan <- cardsPlayed
+				if move.Card < last {
+					fmt.Printf("Card %d played after %d! Game over.\n", move.Card, last)
+					// Notify all players to stop playing
+					cardsPlayedChan <- cardsPlayed
 					close(done)
 					return
 				}
 			}
-			cardsPlayed = append(cardsPlayed, card)
+			cardsPlayed = append(cardsPlayed, move.Card)
 			fmt.Printf("Cards played so far: %v\n", cardsPlayed)
-			player.CardsPlayedChan <- cardsPlayed
+			cardsPlayedChan <- cardsPlayed
 		}
 		// Once playChan is closed, we finish
 		fmt.Println("No more cards to receive. Ending game.")
@@ -100,7 +102,7 @@ func parseArgs() (*GameConfig, error) {
 	}, nil
 }
 
-func setUpGame(config *GameConfig, playChan chan int, cardsPlayedChan chan []int) []*players.Player {
+func setUpGame(config *GameConfig, playChan chan players.Move, cardsPlayedChan chan []int) []*players.Player {
 	hands := cards.GetHands(config.NumPlayers, config.CardsPerPlayer)
 	for i, hand := range hands {
 		fmt.Printf("Player %d's hand: %v\n", i+1, hand)

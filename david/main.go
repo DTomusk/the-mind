@@ -46,23 +46,13 @@ func main() {
 		return
 	}
 
-	hands := cards.GetHands(config.NumPlayers, config.CardsPerPlayer)
-	for i, hand := range hands {
-		fmt.Printf("Player %d's hand: %v\n", i+1, hand)
-	}
-
 	playChan := make(chan int)
+	cardsPlayedChan := make(chan []int)
 	var wg sync.WaitGroup
 
-	// Create one player for demonstration
-	// All players share the playChan which takes the card played (an int)
-	fmt.Println("Starting a single player for demonstration...")
-	player := &players.Player{
-		Id:         1,
-		Hand:       hands[0],
-		PlayChan:   playChan,
-		NotifyChan: make(chan struct{}),
-	}
+	players := setUpGame(config, playChan, cardsPlayedChan)
+	player := players[0]
+
 	// Start the player's play routine in the background
 	fmt.Printf("Player %d is starting to play...\n", player.Id)
 	wg.Add(1)
@@ -71,6 +61,7 @@ func main() {
 	// Run a goroutine in the background to listen for played cards
 	// Gets cards from playChan and notifies the player to continue
 	var gameWg sync.WaitGroup
+	var cardsPlayed []int
 	gameWg.Add(1)
 	go func() {
 		defer gameWg.Done()
@@ -80,7 +71,9 @@ func main() {
 			// Send an empty struct to notify the player that a card has been played
 			// TODO: we want to notify the players of what cards have been played so far
 			// TODO: end the game if this card is less than the previous card
-			player.NotifyChan <- struct{}{}
+			cardsPlayed = append(cardsPlayed, card)
+			fmt.Printf("Cards played so far: %v\n", cardsPlayed)
+			player.CardsPlayedChan <- cardsPlayed
 		}
 		// Once playChan is closed, we finish
 		fmt.Println("No more cards to receive. Ending game.")
@@ -91,4 +84,13 @@ func main() {
 	close(playChan)
 	gameWg.Wait()
 	fmt.Println("Game over.")
+}
+
+func setUpGame(config *GameConfig, playChan chan int, cardsPlayedChan chan []int) []*players.Player {
+	hands := cards.GetHands(config.NumPlayers, config.CardsPerPlayer)
+	for i, hand := range hands {
+		fmt.Printf("Player %d's hand: %v\n", i+1, hand)
+	}
+	players := players.CreatePlayers(config.NumPlayers, hands, playChan, cardsPlayedChan)
+	return players
 }

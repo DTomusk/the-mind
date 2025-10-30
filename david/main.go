@@ -48,6 +48,7 @@ func main() {
 
 	playChan := make(chan int)
 	cardsPlayedChan := make(chan []int)
+	done := make(chan struct{})
 	var wg sync.WaitGroup
 
 	players := setUpGame(config, playChan, cardsPlayedChan)
@@ -56,7 +57,7 @@ func main() {
 	// Start the player's play routine in the background
 	fmt.Printf("Player %d is starting to play...\n", player.Id)
 	wg.Add(1)
-	go player.Play(&wg)
+	go player.Play(&wg, done)
 
 	// Run a goroutine in the background to listen for played cards
 	// Gets cards from playChan and notifies the player to continue
@@ -71,6 +72,15 @@ func main() {
 			// Send an empty struct to notify the player that a card has been played
 			// TODO: we want to notify the players of what cards have been played so far
 			// TODO: end the game if this card is less than the previous card
+			if len(cardsPlayed) > 0 {
+				last := cardsPlayed[len(cardsPlayed)-1]
+				if card < last {
+					fmt.Printf("Card %d played after %d! Game over.\n", card, last)
+					player.CardsPlayedChan <- cardsPlayed
+					close(done)
+					return
+				}
+			}
 			cardsPlayed = append(cardsPlayed, card)
 			fmt.Printf("Cards played so far: %v\n", cardsPlayed)
 			player.CardsPlayedChan <- cardsPlayed
@@ -79,11 +89,17 @@ func main() {
 		fmt.Println("No more cards to receive. Ending game.")
 	}()
 
-	// Finish the game after a second
+	// Wait for the player to finish, each player adds 1 to the wait group
 	wg.Wait()
+	// Once all players are done, close playChan to end the game goroutine
 	close(playChan)
 	gameWg.Wait()
-	fmt.Println("Game over.")
+	select {
+	case <-done:
+		fmt.Println("Game ended early due to invalid card.")
+	default:
+		fmt.Println("Game over — all cards played successfully.")
+	}
 }
 
 func setUpGame(config *GameConfig, playChan chan int, cardsPlayedChan chan []int) []*players.Player {

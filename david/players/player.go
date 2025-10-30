@@ -25,9 +25,15 @@ func CreatePlayers(numPlayers int, hands [][]int, playChan chan int, cardsPlayed
 	return players
 }
 
-func (p *Player) Play(wg *sync.WaitGroup) {
+func (p *Player) Play(wg *sync.WaitGroup, done <-chan struct{}) {
 	defer wg.Done()
 	for len(p.Hand) > 0 {
+		select {
+		case <-done:
+			fmt.Printf("Player %d received done signal. Stopping play.\n", p.Id)
+			return
+		default:
+		}
 		card := p.Hand[0]
 		p.Hand = p.Hand[1:]
 		fmt.Printf("Player %d is playing card %d\n", p.Id, card)

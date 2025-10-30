@@ -104,9 +104,6 @@ func parseArgs() (*GameConfig, error) {
 
 func setUpGame(config *GameConfig, playChan chan players.Move, cardsPlayedChan chan []int) []*players.Player {
 	hands := cards.GetHands(config.NumPlayers, config.CardsPerPlayer)
-	for i, hand := range hands {
-		fmt.Printf("Player %d's hand: %v\n", i+1, hand)
-	}
 	players := players.CreatePlayers(config.NumPlayers, hands, playChan, cardsPlayedChan)
 	return players
 }

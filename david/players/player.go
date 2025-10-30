@@ -3,6 +3,7 @@ package players
 import (
 	"fmt"
 	"math/rand"
+	"sort"
 	"sync"
 	"time"
 )
@@ -33,6 +34,8 @@ func CreatePlayers(numPlayers int, hands [][]int, playChan chan Move, cardsPlaye
 }
 
 func (p *Player) Play(wg *sync.WaitGroup, done <-chan struct{}) {
+	sort.Ints(p.Hand)
+	fmt.Printf("Player %d's sorted hand: %v\n", p.Id, p.Hand)
 	r := rand.New(rand.NewSource(time.Now().UnixNano() + int64(p.Id)))
 	defer wg.Done()
 	for len(p.Hand) > 0 {

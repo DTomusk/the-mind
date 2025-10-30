@@ -30,7 +30,6 @@ func main() {
 
 	// Start each player's play routine in the background
 	for _, player := range players {
-		fmt.Printf("Player %d is starting to play...\n", player.Id)
 		wg.Add(1)
 		go player.Play(&wg, done)
 	}
@@ -58,7 +57,11 @@ func main() {
 			}
 			cardsPlayed = append(cardsPlayed, move.Card)
 			fmt.Printf("Cards played so far: %v\n", cardsPlayed)
-			cardsPlayedChan <- cardsPlayed
+			select {
+			case cardsPlayedChan <- cardsPlayed:
+			case <-done:
+				return
+			}
 		}
 		// Once playChan is closed, we finish
 		fmt.Println("No more cards to receive. Ending game.")

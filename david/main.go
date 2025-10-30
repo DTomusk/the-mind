@@ -4,41 +4,55 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
 	"the-mind/cards"
 	"the-mind/players"
-	"time"
 )
 
-func main() {
+type GameConfig struct {
+	NumPlayers     int
+	CardsPerPlayer int
+}
+
+func parseArgs() (*GameConfig, error) {
 	// TODO: consider using flags
 	args := os.Args[1:]
 	if len(args) != 2 {
-		fmt.Println("Usage: go run main.go <numPlayers> <cardsPerPlayer>")
-		return
+		return nil, fmt.Errorf("usage: go run main.go <numPlayers> <cardsPerPlayer>")
+
 	}
 	numPlayers, err := strconv.Atoi(args[0])
 	if err != nil {
-		fmt.Println("Error: numPlayers must be an integer.")
-		return
+		return nil, fmt.Errorf("error: numPlayers must be an integer")
 	}
 	cardsPerPlayer, err := strconv.Atoi(args[1])
 	if err != nil {
-		fmt.Println("Error: cardsPerPlayer must be an integer.")
-		return
+		return nil, fmt.Errorf("error: cardsPerPlayer must be an integer")
 	}
 
 	if numPlayers*cardsPerPlayer > 100 {
-		fmt.Println("Error: Not enough cards in the deck for the given number of players and cards per player.")
+		return nil, fmt.Errorf("error: Not enough cards in the deck for the given number of players and cards per player")
+	}
+	return &GameConfig{
+		NumPlayers:     numPlayers,
+		CardsPerPlayer: cardsPerPlayer,
+	}, nil
+}
+
+func main() {
+	config, err := parseArgs()
+	if err != nil {
+		fmt.Println(err)
 		return
 	}
 
-	hands := cards.GetHands(numPlayers, cardsPerPlayer)
+	hands := cards.GetHands(config.NumPlayers, config.CardsPerPlayer)
 	for i, hand := range hands {
 		fmt.Printf("Player %d's hand: %v\n", i+1, hand)
 	}
 
 	playChan := make(chan int)
-	done := make(chan struct{})
+	var wg sync.WaitGroup
 
 	// Create one player for demonstration
 	// All players share the playChan which takes the card played (an int)
@@ -49,25 +63,32 @@ func main() {
 		PlayChan:   playChan,
 		NotifyChan: make(chan struct{}),
 	}
-	// Start the player's play routine
+	// Start the player's play routine in the background
 	fmt.Printf("Player %d is starting to play...\n", player.Id)
-	go player.Play()
+	wg.Add(1)
+	go player.Play(&wg)
 
-	// Run a goroutine to listen for played cards
+	// Run a goroutine in the background to listen for played cards
 	// Gets cards from playChan and notifies the player to continue
+	var gameWg sync.WaitGroup
+	gameWg.Add(1)
 	go func() {
+		defer gameWg.Done()
 		for card := range playChan {
 			fmt.Printf("Main received card %d from Player %d\n", card, player.Id)
 
+			// Send an empty struct to notify the player that a card has been played
+			// TODO: we want to notify the players of what cards have been played so far
+			// TODO: end the game if this card is less than the previous card
 			player.NotifyChan <- struct{}{}
 		}
-		// Once all cards are played, signal done
-		close(done)
+		// Once playChan is closed, we finish
+		fmt.Println("No more cards to receive. Ending game.")
 	}()
 
-	time.Sleep(1 * time.Second) // Give some time for the player to start
-	// Wait for the game to finish
+	// Finish the game after a second
+	wg.Wait()
 	close(playChan)
-	<-done
+	gameWg.Wait()
 	fmt.Println("Game over.")
 }

@@ -1,6 +1,9 @@
 package players
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 type Player struct {
 	Id         int
@@ -9,7 +12,8 @@ type Player struct {
 	NotifyChan chan struct{}
 }
 
-func (p *Player) Play() {
+func (p *Player) Play(wg *sync.WaitGroup) {
+	defer wg.Done()
 	for len(p.Hand) > 0 {
 		card := p.Hand[0]
 		p.Hand = p.Hand[1:]

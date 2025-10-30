@@ -12,6 +12,8 @@ func main() {
 	fmt.Println("Deck of cards:", deck)
 	shuffleDeck(deck)
 	fmt.Println("Shuffled deck of cards:", deck)
+	hands := dealCards(deck, 4, 10)
+	fmt.Println("Dealt hands:", hands)
 }
 
 // initialize a new deck of cards numbered 1 to 100
@@ -25,11 +27,22 @@ func createDeck() []int {
 }
 
 func shuffleDeck(deck []int) []int {
-	// Placeholder for shuffle logic
 	fmt.Println("Shuffling the deck...")
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	r.Shuffle(len(deck), func(i, j int) {
 		deck[i], deck[j] = deck[j], deck[i]
 	})
 	return deck
+}
+
+func dealCards(deck []int, numPlayers int, cardsPerPlayer int) [][]int {
+	fmt.Printf("Dealing %d cards to %d players...\n", cardsPerPlayer, numPlayers)
+	hands := make([][]int, numPlayers)
+	for i := 0; i < numPlayers; i++ {
+		hands[i] = make([]int, cardsPerPlayer)
+		for j := 0; j < cardsPerPlayer; j++ {
+			hands[i][j] = deck[i*cardsPerPlayer+j]
+		}
+	}
+	return hands
 }
